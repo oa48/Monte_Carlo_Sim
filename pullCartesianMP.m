@@ -23,7 +23,7 @@ props = root.ExecuteCommand(sprintf('Astrogator_RM */Satellite/%s GetValue MainS
 
 %determines where the spaces are in the string
 
-% pulls out the strings into a useabl format (i dont know why but it wont work without changing it to a class)
+% pulls out the strings into a useable format (i dont know why but it wont work without changing it to a class)
 for i = 0:5
 prop(i+1).string = sprintf(props.Item(i));
 end

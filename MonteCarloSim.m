@@ -115,7 +115,7 @@ end
 clc;
 format long;
 fail = 0;
-for i = 1:1
+for i = 12:12
     % Create a new Satellite to run the new trajectory on. Using copy on a satellite that has one maneuver, one propagate, and all correct paramters
     % This is so that later, I will not need to set all the parameters for a new maneuver, but rather just duplicate and change duration and angle
     
@@ -166,9 +166,9 @@ for i = 1:1
     root2.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValue MainSequence.SegmentList.Initial_State.InitialState.Epoch %s', satName_temp,Start_date));
     
     
-    %propellant mass to start with 
-    %propMass = variables.propMass(i);
-    propMass = 1.104;
+    %propellant mass to start with
+ %   propMass = variables.propMass(i);
+     propMass = 1.104;
     
     %date for first maneuver
     Epoch_start = Start_date;
@@ -176,44 +176,43 @@ for i = 1:1
     %for all the maneuvers/propagations
     for k = 1:length(Locs.finOpt)
         
-        % no angular control, homotopy, and values set to 0 
+        % no angular control, homotopy, and values set to 0
         %thrustControl(root2, 'MnvrCalc', 'False')
         
-        %final optimal positions taken from previous iteration. 
+        %final optimal positions taken from previous iteration.
         Xf = Locs.finOpt(k).X; Yf = Locs.finOpt(k).Y; Zf = Locs.finOpt(k).Z;
         Vxf = Locs.finOpt(k).Vx; Vyf = Locs.finOpt(k).Vy; Vzf = Locs.finOpt(k).Vz;
         
         %conditions to enter the first while loop
         j=0;
         status = 0;
-        pFail = 0;
-        % 5 iterations. tolerance climbs up to 100 over 5 iterations. 
-        while status ==0 && j<=5
+        
+        % 5 iterations. tolerance climbs up to 100 over 5 iterations.
+        while status ==0 && j<=20
             j = j+1;
-            setTol(root2, 'MnvrCalc', .01, j*10);
+            pFail = 0;
+            setTol(root2, 'MnvrCalc', .01, 1.5^j);
             %[status, Outputs] = calcManeuver(root2, 'MnvrCalc', X, Y, Z, Vx, Vy, Vz, Xf, Yf, Zf, Vxf, Vyf, Vzf, variables.dryMass(i), variables.SRP(i), propMass, Epoch_start, Init(k));
             
             
             [status, Outputs] = calcManeuver(root2, 'MnvrCalc', X, Y, Z, Vx, Vy, Vz, Xf, Yf, Zf, Vxf, Vyf, Vzf, 6.11, .03, 1.104, Epoch_start, Init(k), pFail);
-        end
-        
-        %If it cannot converge on a solution, this allows it control angles and maneuvers. 
-        if status ==0 && Init(k).type == 'P'
-            j=0;
-            pFail = 1;
             
-            while status ==0 && j<=10
-                j = j+1;
-                setTol(root2, 'MnvrCalc', .01, j*30);
-                %[status, Outputs] = calcManeuver(root2, 'MnvrCalc', X, Y, Z, Vx, Vy, Vz, Xf, Yf, Zf, Vxf, Vyf, Vzf, variables.dryMass(i), variables.SRP(i), propMass, Epoch_start, Init(k));
+            
+            if status ==0 && Init(k).type == 'P'
                 
-                
+                pFail = 1;
+                                    
                 [status, Outputs] = calcManeuver(root2, 'MnvrCalc', X, Y, Z, Vx, Vy, Vz, Xf, Yf, Zf, Vxf, Vyf, Vzf, 6.11, .03, 1.104, Epoch_start, Init(k), pFail);
+                
+                
+                
             end
             
+            
+            
         end
-        
-        
+        %root2.ExecuteCommand('Astrogator */Satellite/MnvrCalc ResetAllProfiles')
+        %If it cannot converge on a solution, this allows it control angles and maneuvers.
         
         
         if status
@@ -227,8 +226,8 @@ for i = 1:1
             Epoch_start = Locs.finSeg.t;
             
             
-%             X = Locs.finSeg.X+100*randn(1); Y = Locs.finSeg.Y+100*randn(1); Z = Locs.finSeg.Z+100*randn(1);
-%             Vx = Locs.finSeg.Vx+.0001*randn(1); Vy = Locs.finSeg.Vy+.0001*randn(1); Vz = Locs.finSeg.Vz+.0001*randn(1);
+%                         X = Locs.finSeg.X+10*randn(1); Y = Locs.finSeg.Y+10*randn(1); Z = Locs.finSeg.Z+10*randn(1);
+%                         Vx = Locs.finSeg.Vx+.0001*randn(1); Vy = Locs.finSeg.Vy+.0001*randn(1); Vz = Locs.finSeg.Vz+.0001*randn(1);
             
             X = Locs.finSeg.X; Y = Locs.finSeg.Y; Z = Locs.finSeg.Z;
             Vx = Locs.finSeg.Vx; Vy = Locs.finSeg.Vy; Vz = Locs.finSeg.Vz;

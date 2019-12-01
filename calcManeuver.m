@@ -1,4 +1,4 @@
- function [status,Outputs] = calcManeuver(root, satName, X, Y, Z, Vx, Vy, Vz, Xf, Yf, Zf, Vxf, Vyf, Vzf, dryMass, SRPArea, wetMass, Epoch_Start, Init)
+ function [status,Outputs] = calcManeuver(root, satName, X, Y, Z, Vx, Vy, Vz, Xf, Yf, Zf, Vxf, Vyf, Vzf, dryMass, SRPArea, wetMass, Epoch_Start, Init, pFail)
 
 % [Status, Maneuver1, Propagates] = calcManeuver(root, satName, X, Y, Z, Vx, Vy, Vz, Xf, Yf, Zf, Vxf, Vyf, Vzf, dryMass, SRPArea, wetMass)
 
@@ -50,7 +50,8 @@ root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.Se
 root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.SegmentList.Targeter.Profiles.Differential_Corrector1.DisplayResults.Propagate2_:_Z.Desired %g km', satName, Zf));
 
 %% Tolerance?
-%% Initial Values (guesses)?
+
+%% Reset Initial Values 
 % set all parameters back to zero
 root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.SegmentList.Targeter.SegmentList.Propagate.StoppingConditions.Duration.TripValue 0 sec', satName)); 
 root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.SegmentList.Targeter.SegmentList.Maneuver.StoppingConditions.Duration.TripValue 0 sec', satName)); 
@@ -67,6 +68,22 @@ root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.Se
 root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.SegmentList.Targeter.SegmentList.Maneuver1.Cartesian.Y %g', satName, 0));
 root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.SegmentList.Targeter.SegmentList.Maneuver1.Cartesian.Z %g', satName, 0));
 
+%% Apply Initial Values 
+% sit = 1 means we have a maneuver which will recieve access to control the thrust of maneuver
+% sit = 2 means we have a propagation which will not reeive maneuver control
+% sit = 3 means we have a propagation which will recieve maneuver control
+
+% 
+if Init.X == 0
+    Init.X = .01;
+end
+if Init.Z == 0
+    Init.Z = .01;
+end
+if Init.Y == 0
+    Init.Y = .01;
+end
+
 
 
 if strcmp(Init.type, 'M')
@@ -74,14 +91,32 @@ if strcmp(Init.type, 'M')
     root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.SegmentList.Targeter.SegmentList.Maneuver.Cartesian.Y %g', satName, Init.Y));
     root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.SegmentList.Targeter.SegmentList.Maneuver.Cartesian.Z %g', satName, Init.Z));
     root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.SegmentList.Targeter.SegmentList.Maneuver.StoppingConditions.Duration.TripValue %g sec', satName, Init.t));
+    
+    sit = 1;
+    thrustControl(root, satName, sit)
+    root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValue MainSequence.SegmentList.Targeter.Profiles.Differential_Corrector1.MaxIterations %g', 'MnvrCalc', 100));
+    
 else
+    if pFail == 1
+        sit = 3;
+        
+        root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValue MainSequence.SegmentList.Targeter.SegmentList.Maneuver.StoppingConditions.Duration.TripValue 1000 sec', satName));
+        root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.SegmentList.Targeter.SegmentList.Maneuver.Cartesian.X %g', satName, .01));
+        root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.SegmentList.Targeter.SegmentList.Maneuver.Cartesian.Y %g', satName, .01));
+        root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.SegmentList.Targeter.SegmentList.Maneuver.Cartesian.Z %g', satName, .01));
+        root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValue MainSequence.SegmentList.Targeter.Profiles.Differential_Corrector1.MaxIterations %g', 'MnvrCalc', 100));
+        root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.SegmentList.Targeter.SegmentList.Propagate1.StoppingConditions.Duration.TripValue %g sec', satName, 1000));
+        Init.t = Init.t-2000;
+        
+    else
+        sit = 2;
+        root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValue MainSequence.SegmentList.Targeter.Profiles.Differential_Corrector1.MaxIterations %g', 'MnvrCalc', 50));
+    end
+    
+    thrustControl(root, satName, sit)
     root.ExecuteCommand(sprintf('Astrogator */Satellite/%s SetValues MainSequence.SegmentList.Targeter.SegmentList.Propagate.StoppingConditions.Duration.TripValue %g sec', satName, Init.t));
+    
 end
-
-
-
-
-
 
 
 %% Run MCS
